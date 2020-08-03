@@ -88,7 +88,7 @@ async function task_1_4(db) {
                                             ), 5)  AS "% of all orders"
         FROM Orders
         GROUP BY CustomerID
-        ORDER BY \`% of all orders\` DESC, CustomerID;
+        ORDER BY \`% of all orders\` DESC, CustomerID
 `);
     return result[0];
 }
@@ -142,9 +142,9 @@ async function task_1_6(db) {
  */
 async function task_1_7(db) {
     let result = await db.query(`
-        SELECT e1.EmployeeID as "EmployeeId",
+        SELECT e1.EmployeeID AS "EmployeeId",
             CONCAT(e1.FirstName, ' ', e1.LastName) AS "FullName",
-            IFNULL(CONCAT(e2.FirstName, ' ', e2.LastName), "-") as "ReportsTo"
+            IFNULL(CONCAT(e2.FirstName, ' ', e2.LastName), "-") AS "ReportsTo"
         FROM Employees e1
         LEFT JOIN Employees e2 ON e1.ReportsTo = e2.EmployeeID
 `);
@@ -161,7 +161,8 @@ async function task_1_7(db) {
  */
 async function task_1_8(db) {
     let result = await db.query(`
-        SELECT CategoryName, COUNT(CategoryID) AS TotalNumberOfProducts
+        SELECT CategoryName, 
+            COUNT(CategoryID) AS TotalNumberOfProducts
         FROM Categories
         JOIN Products USING(CategoryID)
         GROUP BY CategoryName
@@ -287,17 +288,17 @@ async function task_1_15(db) {
     let result = await db.query(`
         SELECT 
             COUNT(CASE WHEN MONTH(OrderDate) = 1 THEN 0 END) AS 'January',
-            COUNT(CASE WHEN OrderDate LIKE '1997-02-%' THEN 0 END) AS 'February',
-            COUNT(CASE WHEN OrderDate LIKE '1997-03-%' THEN 0 END) AS 'March',
-            COUNT(CASE WHEN OrderDate LIKE '1997-04-%' THEN 0 END) AS 'April',
-            COUNT(CASE WHEN OrderDate LIKE '1997-05-%' THEN 0 END) AS 'May',
-            COUNT(CASE WHEN OrderDate LIKE '1997-06-%' THEN 0 END) AS 'June',
-            COUNT(CASE WHEN OrderDate LIKE '1997-07-%' THEN 0 END) AS 'July',
-            COUNT(CASE WHEN OrderDate LIKE '1997-08-%' THEN 0 END) AS 'August',
-            COUNT(CASE WHEN OrderDate LIKE '1997-09-%' THEN 0 END) AS 'September',
-            COUNT(CASE WHEN OrderDate LIKE '1997-10-%' THEN 0 END) AS 'October',
-            COUNT(CASE WHEN OrderDate LIKE '1997-11-%' THEN 0 END) AS 'November',
-            COUNT(CASE WHEN OrderDate LIKE '1997-12-%' THEN 0 END) AS 'December'
+            COUNT(CASE WHEN MONTH(OrderDate) = 2 THEN 0 END) AS 'February',
+            COUNT(CASE WHEN MONTH(OrderDate) = 3 THEN 0 END) AS 'March',
+            COUNT(CASE WHEN MONTH(OrderDate) = 4 THEN 0 END) AS 'April',
+            COUNT(CASE WHEN MONTH(OrderDate) = 5 THEN 0 END) AS 'May',
+            COUNT(CASE WHEN MONTH(OrderDate) = 6 THEN 0 END) AS 'June',
+            COUNT(CASE WHEN MONTH(OrderDate) = 7 THEN 0 END) AS 'July',
+            COUNT(CASE WHEN MONTH(OrderDate) = 8 THEN 0 END) AS 'August',
+            COUNT(CASE WHEN MONTH(OrderDate) = 9 THEN 0 END) AS 'September',
+            COUNT(CASE WHEN MONTH(OrderDate) = 10 THEN 0 END) AS 'October',
+            COUNT(CASE WHEN MONTH(OrderDate) = 11 THEN 0 END) AS 'November',
+            COUNT(CASE WHEN MONTH(OrderDate) = 12 THEN 0 END) AS 'December'
         FROM Orders
         WHERE YEAR(OrderDate) = 1997;
 `);
@@ -350,8 +351,8 @@ async function task_1_17(db) {
  */
 async function task_1_18(db) {
     let result = await db.query(`
-         SELECT DATE_FORMAT(OrderDate, '%Y-%m-%d %T') as "OrderDate",
-         COUNT(*) AS "Total Number of Orders"
+        SELECT DATE_FORMAT(OrderDate, '%Y-%m-%d %T') as "OrderDate",
+            COUNT(*) AS "Total Number of Orders"
         FROM Orders
         WHERE YEAR(OrderDate) = 1998
         GROUP BY OrderDate
@@ -391,7 +392,18 @@ async function task_1_19(db) {
  *
  */
 async function task_1_20(db) {
-    throw new Error("Not implemented");
+    let result = await db.query(`
+        SELECT EmployeeID,
+            CONCAT(FirstName, ' ', LastName) AS 'Employee Full Name',
+            SUM(UnitPrice * Quantity) AS 'Amount, $'
+        FROM Orders
+        JOIN Employees USING(EmployeeID)
+        JOIN OrderDetails USING(OrderID)
+        GROUP BY Employees.EmployeeID
+        ORDER BY SUM(UnitPrice * Quantity) DESC
+        LIMIT 1
+`);
+    return result[0];
 }
 
 /**
@@ -401,7 +413,15 @@ async function task_1_20(db) {
  * @return {array}
  */
 async function task_1_21(db) {
-    throw new Error("Not implemented");
+    let result = await db.query(`
+        SELECT OrderID, 
+            SUM(UnitPrice * Quantity) AS "Maximum Purchase Amount, $" 
+        FROM OrderDetails
+        GROUP BY OrderID
+        ORDER BY SUM(UnitPrice * Quantity) DESC
+        LIMIT 1
+`);
+    return result[0];
 }
 
 /**
@@ -412,7 +432,23 @@ async function task_1_21(db) {
  * @return {array}
  */
 async function task_1_22(db) {
-    throw new Error("Not implemented");
+    let result = await db.query(`
+        SELECT DISTINCT
+            Customers.CompanyName,
+            Products.ProductName,
+            OrderDetails.UnitPrice AS PricePerItem
+        FROM Customers, Orders, OrderDetails, Products
+        WHERE Customers.CustomerId = Orders.CustomerId AND 
+            Orders.OrderId = OrderDetails.OrderId AND 
+            OrderDetails.ProductId = Products.ProductId AND
+            OrderDetails.UnitPrice = (SELECT MAX(OrderDetails.UnitPrice)
+                                      FROM OrderDetails, Products, Orders
+                                      WHERE OrderDetails.ProductId = Products.ProductId AND 
+                                        Orders.OrderId = OrderDetails.OrderId AND 
+                                        Customers.CustomerId = Orders.CustomerId)
+        ORDER BY PricePerItem DESC, ProductName, CompanyName
+`);
+    return result[0];
 }
 
 module.exports = {
