@@ -433,20 +433,17 @@ async function task_1_21(db) {
  */
 async function task_1_22(db) {
     let result = await db.query(`
-        SELECT DISTINCT
-            Customers.CompanyName,
-            Products.ProductName,
-            OrderDetails.UnitPrice AS PricePerItem
-        FROM Customers, Orders, OrderDetails, Products
-        WHERE Customers.CustomerId = Orders.CustomerId AND 
-            Orders.OrderId = OrderDetails.OrderId AND 
-            OrderDetails.ProductId = Products.ProductId AND
-            OrderDetails.UnitPrice = (SELECT MAX(OrderDetails.UnitPrice)
-                                      FROM OrderDetails, Products, Orders
-                                      WHERE OrderDetails.ProductId = Products.ProductId AND 
-                                        Orders.OrderId = OrderDetails.OrderId AND 
-                                        Customers.CustomerId = Orders.CustomerId)
-        ORDER BY PricePerItem DESC, ProductName, CompanyName
+        SELECT t1.CompanyName, t1.ProductName, t1.PricePerItem
+        FROM (
+            SELECT DISTINCT c.CompanyName, p.ProductName, od.UnitPrice AS PricePerItem,
+                RANK() OVER (PARTITION BY c.CompanyName ORDER BY od.UnitPrice DESC) as RowNumber
+            FROM Customers AS c
+            INNER JOIN Orders AS o ON c.CustomerId = o.CustomerId
+            INNER JOIN OrderDetails AS od ON o.OrderId = od.OrderId
+            INNER JOIN Products as p on od.ProductID = p.ProductID
+            ) as t1
+        WHERE t1.RowNumber = 1
+        ORDER BY t1.PricePerItem DESC, t1.ProductName, t1.CompanyName
 `);
     return result[0];
 }
